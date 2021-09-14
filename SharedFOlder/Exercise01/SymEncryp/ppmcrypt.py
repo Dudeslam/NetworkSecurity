@@ -72,7 +72,7 @@ class PPMImage:
         elif mode.lower() == 'cbc':
             # --------- add your code here --------
             key = get_random_bytes(16)
-            cipher = AES.new(key, AES.MODE_CBC)
+            cipher = AES.new(key, AES.MODE_CBC, key=key)
             ciphertext = cipher.encrypt(pad((self.data), 16))
 
 
@@ -82,9 +82,9 @@ class PPMImage:
             self.comments.append(f'X-iv: {iv.hex()}'.encode())
         elif mode.lower() == 'ctr':
             # --------- add your code here --------
-            key = get_random_bytes(16)
-            cipher = AES.new(key, AES.MODE_CTR)
-            ciphertext = cipher.encrypt(pad((self.data), 16))
+            key = get_random_bytes(8)
+            cipher = AES.new(key, AES.MODE_CTR, nonce=key)
+            ciphertext = cipher.encrypt((self.data))
 
             # ----- end add your code here --------
             self.data = bytearray(ciphertext)
@@ -92,7 +92,9 @@ class PPMImage:
             self.comments.append(f'X-nonce: {nonce.hex()}'.encode())
         elif mode.lower() == 'gcm':
             # --------- add your code here --------
-            raise NotImplementedError(f'mode of operation {mode} not implemented')
+            key = get_random_bytes(16)
+            cipher = AES.new(key, AES.MODE_GCM, nonce=key)
+            ciphertext = cipher.encrypt((self.data))
             # ----- end add your code here --------
             self.data = bytearray(ciphertext)
             self.comments.append(b'X-mode: gcm')
