@@ -1,12 +1,31 @@
 import requests
 import pprint
 import json
+import math
+from secret_data import rsa_key
 
-url = 'http://localhost:5000'
+url = 'http://localhost:5000/'
 urlSignRnd = 'http://localhost:5000/sign_random_document_for_students/'
-urlSign = 'http://localhost:5000/sign'
-urlVerify = 'http://localhost:5000/verify'
+urlSign = 'http://localhost:5000/sign/'
+urlVerify = 'http://localhost:5000/verify/'
 msg = 'myMessage.txt'
+
+
+def verify(message: bytes, signature: bytes) -> bool:
+    """Verify a signature using our public key."""
+    # modulus and private exponent
+    N = rsa_key['_n']
+    e = rsa_key['_e']
+    # interpret the bytes of the message and the signature as integers stored
+    # in big-endian byte order
+    m = int.from_bytes(message, 'big')
+    s = int.from_bytes(signature, 'big')
+    if not 0 <= m < N or not 0 <= s < N:
+        raise ValueError('message or signature too large')
+    # verify the signature
+    mm = pow(s, e, N)
+    return m == mm
+
 
 #r = requests.get(url)
 #print("URL response is:%s"%r.text)
@@ -34,49 +53,99 @@ msg1_int = int("".join(map(str, msg1_int)))
 r1 = requests.get(urlSignRnd + msg1.encode('ascii').hex() + '/')
 #print("URL response is:%s"%r1.text)
 r1 = json.loads(r1.text)
-s1 = r1['signature']
-s1_int = int(s1,16)
-print(type(s1))
-print(s1)
-print(s1_int)
-'''
+
+msg1_b = bytes.fromhex(r1['msg'])
+#print(msg.decode())                        # decode goes from byte array to str
+sig1_b = bytes.fromhex(r1['signature'])
+res1 = verify(msg1_b, sig1_b)
+print('Result: ', res1)
+sig1_int = int(sig1_b.hex(),16)
+print(sig1_int)
+
 # Create malecious message and make msg2 as product of this + first innocent msg
 #evilMsg = 'Ill taker over the world now!'.encode('utf-8')
-evilMsg = 'Gimmy 12!'#.encode('ascii')
+evilMsg = 'You got a 12 because you are an excellent student! :)'#.encode('ascii')
 evilMsg_int = [ord(ch) for ch in evilMsg]
 evilMsg_int = int("".join(map(str, evilMsg_int)))
 #print(evilMsg_int)  # 7110510910912132495033
 
-#msg2 = int(evilMsg.hex(),16) / int(msg1.hex(),16)
-msg2 = (evilMsg_int * (msg1_int^-1) ) % N
 
-print(type(msg2))
-print(msg2)
-print(type(hex(msg2)))
-print(hex(msg2))
-m = str(msg2).encode('ascii')
-print(type(m.hex()))
-print(m.hex())
+# Extended GCD
+def egcd(a, b):
+    if a == 0:
+        return (b, 0, 1)
+    else:
+        g, y, x = egcd(b % a, a)
+        return (g, x - (b // a) * y, y)
 
-r2 = requests.get(urlSignRnd + m.hex() + '/')
-print("URL response is:%s"%r2.text)
+# Calculated inverse modular m
+def modinv(a, m):
+    g, x, y = egcd(a, m)
+    if g != 1:
+        raise Exception('modular inverse does not exist')
+    else:
+        return x % m
 
+
+# Verifying modinv
+#print( (modinv(msg1_int,N)*msg1_int)%N )
+#print('HERE')
+
+
+#msg2 = int(evilMsg.hex(),16) / int(msg1.hex(),16) % N
+msg2 = (evilMsg_int * modinv(msg1_int,N) ) % N
+#print(type(hex(msg2)[2:]))
+#print(hex(msg2)[2:])
+
+r2 = requests.get(urlSignRnd + hex(msg2)[2:] + '/')
+#print("URL response is:%s"%r2.text)
 r2 = json.loads(r2.text)
 s2 = r2['signature']
+s2_int = int(s2,16)
+#print(type(s2))
+#print(s2)
+
 
 # From the two pairs m1/s1 and m2/s2 the signature for m can be extracted
-s = s1*s2 % N
+s = (s1_int*s2_int) % N
+
+
+m = pow(s1_int,e,N)
+#print(m)
+
+m = pow(s2_int,e,N)
+#print(m)
+
+m = pow(s,e,N)
+#print(m)
+
 # IE. Alice just signed an evil msg !!!
+#print(evilMsg.encode('ascii').hex())
+#print(hex(s)[2:])
 
-
-r = requests.get(url+'/verify', evilMsg.hex(), s )
-print(r)    # true/false
-'''
-
-
-
-#data = 0
-#with open(msg, 'rb') as f:
-#    r = requests.post(urlSign, files={msg: f})
-
+cookies = dict({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(s)[2:]})
+r = requests.get(url+'grade/', cookies=cookies)
 #print("URL response is:%s"%r.text)
+
+
+#r = requests.get(urlVerify + evilMsg.encode('ascii').hex() + str(s) )
+#r = requests.get(urlVerify, evilMsg.encode('ascii').hex() + str(s) )
+#print(r)    # true/false
+
+
+
+
+
+
+
+
+
+
+
+#arr2 = bytes(string, 'ascii')
+#print(bytes(evilMsg, 'ascii'))
+#r = verify(bytes(evilMsg, 'ascii'), bytes(hex(s)[2:], 'ascii') )
+#r = verify(evilMsg.encode('ascii').hex(), hex(s)[2:] )
+#print(r)    # true/false
+
+
