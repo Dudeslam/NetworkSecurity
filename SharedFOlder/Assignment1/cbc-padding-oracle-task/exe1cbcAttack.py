@@ -24,6 +24,14 @@ r.encoding
 r.text
 r.json()
 
+token = requests.get('authtoken')
+# try to decode/decrypt the token
+token = bytes.fromhex(token)
+
+
+
+
+
 
 # Get plain text from cookie
 # Decrypt it and set it

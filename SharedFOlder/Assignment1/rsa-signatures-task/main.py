@@ -3,9 +3,15 @@ import math
 import secrets
 from flask import Flask, request, make_response, redirect, url_for
 from secret_data import rsa_key
+import base64
+import string
+from urllib.parse import quote as url_quote
 
 app = Flask(__name__)
 quotes = open('quotes.txt', 'r').readlines()
+
+
+
 
 
 def sign(message: bytes) -> bytes:
@@ -134,3 +140,4 @@ def sign_random_document_for_student(data):
         return {'msg': msg.hex(), 'signature': signature.hex()}
     except Exception as e:  # something went wrong
         return {'error': str(e)}
+
