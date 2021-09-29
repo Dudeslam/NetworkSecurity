@@ -4,7 +4,7 @@ import pprint
 import json
 import math
 from requests.cookies import create_cookie
-
+import base64
 from requests.sessions import RequestsCookieJar
 from secret_data import rsa_key
 from flask import Flask, Request, make_response, Response, jsonify
@@ -44,6 +44,15 @@ def verify(message: bytes, signature: bytes) -> bool:
     mm = pow(s, e, N)
     return m == mm
 
+def json_to_cookie(j: str) -> str:
+    """Encode json data in a cookie-friendly way using base64."""
+    # The JSON data is a string - encode it into bytes
+    json_as_bytes = j.encode()
+    # base64-encode the bytes
+    base64_as_bytes = base64.b64encode(json_as_bytes, altchars=b'-_')
+    # b64encode returns bytes again, but we need a string - decode it
+    base64_as_str = base64_as_bytes.decode()
+    return base64_as_str
 
 
 # Get first "innocent" message signed
@@ -59,6 +68,7 @@ msg1_int = int("".join(map(str, msg1_int)))
 #print(msg1.encode('ascii').hex())
 
 r1 = requests.get(urlSignRnd + msg1.encode('ascii').hex() + '/')
+firstCook=r1.cookies
 # print("first cookie")
 # print("URL response is:%s"%r1.text)
 r1 = json.loads(r1.text)
@@ -160,9 +170,16 @@ print("URL response is:%s"%r1.text)
 print(r1.cookies)
 
 print("space to seperate")
-j = json.dumps({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(sigEvil_int)[2:]})
+j = json.dumps({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(sigEvil_int)[0][2:]})
+# Cooks=json_to_cookie(j)
+
+
 r1.cookies.clear()
-print(r1.cookies.set('grade', j))
+# r1.cookies['msg']=evilMsg.encode('ascii').hex()
+# r1.cookies['signature']=hex(sigEvil_int)[2:]
+r1.cookies.set('grade',j)
+print(r1.cookies)
+
 # finalCooks=create_cookie('grade',j)
 
 # getcook = r1.cookies.get('grade')
@@ -170,6 +187,8 @@ print(r1.cookies.set('grade', j))
 # print(getcook)
 # print(getcook['signature'])
 
+
+# r2 = requests.get(url+'quote/', cookies=firstCook)
 r2 = requests.get(url+'quote/', cookies=r1.cookies)
 print("URL response is:%s"%r2.text)
 
