@@ -49,8 +49,8 @@ def write_file(data, filename=None):
 def main():
     server = socket(AF_INET, SOCK_STREAM)
 
-    port = 9000
-    server.bind(("localhost", port))
+    port = 5000
+    server.bind(('', port))
 
     server.listen(5)
     print("server listening on: {!s}".format(port))

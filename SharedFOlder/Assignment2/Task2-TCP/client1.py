@@ -1,44 +1,36 @@
-from socket import *
-import sys
-import os
+import socket
+import re
+import time
 
+HOST = '127.0.0.1'  # The server's hostname or IP address
+PORT = 65432        # The port used by the server
 
-def main():
-    while not input("enter to connect to server"):
-
-        val = input("1 for string, 2 for bytes")
-        msg = int(val).to_bytes(length=1, byteorder=sys.byteorder)
-
-        if val == "1":
-            text = input("Enter your message")
-            msg = msg + bytes(text, "utf-8")
+while True:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        incrementVal = 0
+        print("Connecting")
+        s.connect((HOST, PORT))
+        msg = "Increment this : " + str(incrementVal)
+        print("Sending MSG")
+        s.sendall(msg.encode())
+        data = s.recv(1024)
+        if not data:
+            print("No data Received")
+            break
         else:
-            size = 0
-            if val == "2":
-                size = 100
-            if val == "3":
-                size = 1000
-            if val == "4":
-                size = 100000
-            random_array = bytearray(os.urandom(size))
-            msg_length_bytes = int(size).to_bytes(
-                length=int(val) - 1, byteorder=sys.byteorder)
-            msg = msg + msg_length_bytes + random_array
-
-        client = socket(AF_INET, SOCK_STREAM)
-        port = 9000
-
-        client.connect(("192.168.0.30", port))
-
-        print("sending when connected")
-
-        client.send(msg)
-        data = client.recv(1024)
-
-        print("data: {!s}".format(data))
-        client.close()
-        print("client connection closed")
+            print("Received:", data)
+            recvVal = data.decode("UTF-8")
+            incVal = re.findall(r'\b\d+\b',recvVal)
+            incrementVal = int(incVal[0]) + 1
+            msg = "Increment this : " + str(incrementVal)
+            print("Sending next message")
+            time.sleep(2)
+            s.sendall(msg.encode())
 
 
-if __name__ == "__main__":
-    main()
+
+
+    if(incrementVal == 256):
+        break
+
+print('Received', repr(data))
