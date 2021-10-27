@@ -11,10 +11,10 @@ from flask import Flask, Request, make_response, Response, jsonify
 from http.cookiejar import CookieJar
 
 
-url = 'https://rsa.syssec.lnrd.net/grade/'
-urlSignRnd = 'https://rsa.syssec.lnrd.net/sign_random_document_for_students/'
-urlSign = 'https://rsa.syssec.lnrd.net/sign'
-urlVerify = 'https://rsa.syssec.lnrd.net/verify'
+url = 'http://localhost:5000/'
+urlSignRnd = 'http://localhost:5000/sign_random_document_for_students/'
+urlSign = 'http://localhost:5000/sign/'
+urlVerify = 'http://localhost:5000/verify/'
 msg = 'myMessage.txt'
 
 
@@ -54,23 +54,6 @@ def json_to_cookie(j: str) -> str:
     base64_as_str = base64_as_bytes.decode()
     return base64_as_str
 
-def cookiejar_from_dict(*cookie_dicts):
-    """Returns a CookieJar from a key/value dictionary.
- 
-    :param cookie_dict: Dict of key/values to insert into CookieJar.
-    """
-    cookie_dicts = tuple((d for d in cookie_dicts if d))
-    if len(cookie_dicts) == 1 and isinstance(cookie_dicts[0], CookieJar):
-        return cookie_dicts[0]
-    cookiejar = CookieJar()
-    for cookie_dict in cookie_dicts:
-        if isinstance(cookie_dict, CookieJar):
-            for cookie in cookie_dict:
-                cookiejar.set_cookie(cookie)
-        else:
-            for name in cookie_dict:
-                cookiejar.set_cookie(create_cookie(name, cookie_dict[name]))
-    return cookiejar
 
 # Get first "innocent" message signed
 #msg1 = 'my message 1, plz sign'.encode('ascii')
@@ -85,12 +68,10 @@ msg1_int = int("".join(map(str, msg1_int)))
 #print(msg1.encode('ascii').hex())
 
 r1 = requests.get(urlSignRnd + msg1.encode('ascii').hex() + '/')
-
+firstCook=r1.cookies
 # print("first cookie")
 # print("URL response is:%s"%r1.text)
 r1 = json.loads(r1.text)
-firstCook=r1
-
 
 msg1_b = bytes.fromhex(r1['msg'])
 #print(msg.decode())                        # decode goes from byte array to str
@@ -142,8 +123,6 @@ msg2 = (evilMsg_int * modinv(msg1_int,N) ) % N
 r2 = requests.get(urlSignRnd + hex(msg2)[2:] + '/')
 #print("URL response is:%s"%r2.text)
 r2 = json.loads(r2.text)
-print(r2)
-
 
 msg2_b = bytes.fromhex(r2['msg'])
 #print(msg.decode())                        # decode goes from byte array to str
@@ -171,19 +150,13 @@ msgEvil_b = evilMsg.encode()
 #print(msgEvil_b)
 
 res3 = verify(msgEvil_b, sigEvil_b)
-print("Result of malicious message")
 print('Result: ', res2)
 # IE. Alice just signed an evil msg !!!
 
 
-print("First cookie")
-print(firstCook)
-print("Request with first cookie")
-r3 = requests.get(url + 'quote/', cookies=firstCook)
-print("URL response is:%s"%r3.text)
-
 #cookies = dict({'msg': msgEvil_b, 'signature': sigEvil_b})
-
+cookay = dict({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(sigEvil_int)[0][2:]})
+#r = requests.get(url+'grade/', cookies=cookies)
 
 # print(bytes.fromhex(cookay['msg']))
 # print('this is space')
@@ -194,12 +167,10 @@ print("URL response is:%s"%r3.text)
 r1 = requests.get(url+'grade/')
 print("URL response is:%s"%r1.text)
 
-# print(r1.cookies)
+print(r1.cookies)
 
-print("Malicious Message using json Dumps")
+print("space to seperate")
 j = json.dumps({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(sigEvil_int)[2:]})
-cookay = dict({'msg': evilMsg.encode('ascii').hex(), 'signature': hex(sigEvil_int)[2:]})
-# cookay = dict({'msg': base64.b64encode( evilMsg.encode()), 'signature': hex(sigEvil_int)[2:]})
 # Cooks=json_to_cookie(j)
 
 
@@ -215,40 +186,18 @@ print(r1.cookies)
 
 # print(getcook)
 # print(getcook['signature'])
-# customHeader = {'cookie' : str(r1.cookies)}
-customHeader = {'cookie' : j}
+customHeader = {'cookie' : str(r1.cookies)}
 
-# print('request with dict')
+
+print('request with first cookie')
 # r2 = requests.post(url+'quote/', cookies=firstCook)
-# r2 = requests.post(url+'quote/', cookies=r1.cookies, headers=customHeader)
-# r2 = requests.post(url+'quote/', cookies=cookay)
-# print("URL response is:%s"%r2.text)
-# r2 = requests.session()
+r2 = requests.post(url+'quote/', cookies=r1.cookies, headers=customHeader)
+print("URL response is:%s"%r2.text)
 
-
-CookObj=cookiejar_from_dict(cookay)
-
-# CookObj = CookieJar()
-# CookObj.make_cookies(r1,r2)
-# CookObj.set_cookie(cookay)
-print("Cookie from helper function")
-print(CookObj)
-
-
-# print('with session')
-# r2 = requests.session()
-# cooks = requests.cookies.create_cookie(domain=url, name='grade', value=cookay)
-# r2.cookies.set_cookie(cooks)
-# print(r2.cookies)
-
-
-print("CookieJar")
-# r3 = requests.get(url + 'quote/', cookies=cookay)
-r3 = requests.get(url + 'quote/', cookies=CookObj)
+print('with session')
+r2 = requests.session()
+r3 = r2.get(url + 'quote/', cookies=r1.cookies, headers=customHeader)
 print("URL response is:%s"%r3.text)
-
-# r3 = r2.post(url + 'quote/', cookies=r2.cookies, headers=customHeader)
-# print("URL response is:%s"%r3.text)
 
 
 
