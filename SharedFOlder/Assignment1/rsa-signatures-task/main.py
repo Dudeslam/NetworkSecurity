@@ -93,6 +93,7 @@ def grade():
             # decode the hexadecimal encoded byte strings
             msg = bytes.fromhex(j['msg'])
             signature = bytes.fromhex(j['signature'])
+            print('got cooks from visitor')
             # check if the signature is valid
             if not verify(msg, signature):
                 return '<p>Hm, are you trying to cheat?.</p>'
@@ -122,16 +123,20 @@ def grade():
 
 
 
-@app.route('/quote/')
+@app.route('/quote/', methods=['GET', 'POST'])
 def quote():
     """Show a quote to good students."""
     try:
+        print('trying')
         # decode the base 64 encoded cookie from the request
         c = cookie_to_json(request.cookies.get('grade'))
+        print('trying to get grade')
+        print(c)
         # deserialize the JSON object which we expect in the cookie
         j = json.loads(c)
         # decode the hexadecimal encoded byte strings
         msg = bytes.fromhex(j['msg'])
+        print(msg)
         signature = bytes.fromhex(j['signature'])
     except Exception as e:
         return '<p>Grading is not yet done, come back next year.</p>'
