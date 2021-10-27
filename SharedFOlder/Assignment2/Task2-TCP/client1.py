@@ -3,7 +3,8 @@ import re
 import time
 
 # HOST = '192.168.0.7'  # The server's hostname or IP address
-HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+# HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+HOST = '192.168.0.26' # IPV4 Laptop
 PORT = 65432        # The port used by the server
 
 
