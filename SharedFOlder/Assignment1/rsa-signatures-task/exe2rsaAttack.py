@@ -11,10 +11,10 @@ from flask import Flask, Request, make_response, Response, jsonify
 from http.cookiejar import CookieJar
 
 
-url = 'http://localhost:5000/'
-urlSignRnd = 'http://localhost:5000/sign_random_document_for_students/'
-urlSign = 'http://localhost:5000/sign/'
-urlVerify = 'http://localhost:5000/verify/'
+url = 'https://rsa.syssec.lnrd.net/grade/'
+urlSignRnd = 'https://rsa.syssec.lnrd.net/sign_random_document_for_students/'
+urlSign = 'https://rsa.syssec.lnrd.net/sign'
+urlVerify = 'https://rsa.syssec.lnrd.net/verify'
 msg = 'myMessage.txt'
 
 
@@ -142,6 +142,8 @@ msg2 = (evilMsg_int * modinv(msg1_int,N) ) % N
 r2 = requests.get(urlSignRnd + hex(msg2)[2:] + '/')
 #print("URL response is:%s"%r2.text)
 r2 = json.loads(r2.text)
+print(r2)
+
 
 msg2_b = bytes.fromhex(r2['msg'])
 #print(msg.decode())                        # decode goes from byte array to str
