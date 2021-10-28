@@ -24,7 +24,6 @@ from socket import *
 import struct
 import sys
 import ctypes
-import scapy.all as scapy
 
 #Run this script in CMD with admin
 
@@ -51,6 +50,7 @@ def recvPacket():
 
     while True:
         packet = s.recvfrom(2048)
+        print(packet)
 
 if is_admin():
     recvPacket()
