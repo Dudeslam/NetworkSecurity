@@ -48,6 +48,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             except:
                 s.close()
                 print("could not send data, now closing connection")
+                sys.exit()
         
 
 
