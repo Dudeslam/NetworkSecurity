@@ -1,3 +1,5 @@
 *.iso
 *.pyc
 SharedFolder/Images
+SharedFolder/scapy-2.4.5
+SharedFolder/dsniff
