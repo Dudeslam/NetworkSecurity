@@ -21,35 +21,32 @@ PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 
 import socket 
 from socket import *
-import struct
+from struct import *
 import sys
 import ctypes
 import binascii
+from getmac import get_mac_address
 
 #Run this script in CMD with admin
 
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
+
+def ethernet_head(raw_data):
+    dest, src, prototype = unpack('! 6s 6s H' , raw_data[:14])
+    dest_mac = get_mac_address(dest)
+    src_mac = get_mac_address(src)
+    proto = htons(prototype)
+    data = raw_data[:14]
+    return dest_mac, src_mac, proto, data
 
 
 
-def recvPacket():
-    print("Hello Packet")
-    # Reads TCP packets in the local network
+def main():
+    print("Starting Program")
     s = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)
-
-
     while True:
-        packet = s.recvfrom(65565)
-        print(packet)
-        
+        packet, addr = s.recvfrom(65565)
+        eth = ethernet_head(packet)
+        print('Destination: {}, Source {}, Protocol: {}'.format(eth[0], eth[1], eth[2]))
 
-if is_admin():
-    recvPacket()
-else:
-    recvPacket()
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-
+if __name__ == "__main__":
+    main()
