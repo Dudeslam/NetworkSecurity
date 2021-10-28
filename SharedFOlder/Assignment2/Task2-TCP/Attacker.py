@@ -38,45 +38,14 @@ def is_admin():
 
 def recvPacket():
     print("Hello Packet")
-    s = socket(AF_INET, SOCK_RAW, htons(0x0800))
-    hostname = gethostname()
-    host = gethostbyname(hostname)
-    print('IP: {}'.format(host))
-    # addr = getaddrinfo('localhost', 8080)
-    # print(addr)
+    # Reads TCP packets in the local network
+    s = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)
 
-    
-    # s.bind(("eth0", htons(0x0800)))
-    
 
-    
-    packet = s.recvfrom(2048)
+    while True:
+        packet = s.recvfrom(65565)
+        print(packet)
         
-
-    # Ethernet Header tuple segmentation
-    eHeader = packet[0][0:14]
-
-    # parsing using unpack
-    eth_hdr = struct.unpack("!6s6s2s", eHeader) # 6 dest MAC, 6 host MAC, 2 ethType
-
-    binascii.hexlify(eth_hdr[0])
-    binascii.hexlify(eth_hdr[1])
-    binascii.hexlify(eth_hdr[2])
-
-
-    ipHeader = packet[0][14:34]
-    ip_hdr = struct.unpack("!12s4s4s", ipHeader) # 12s represents Identification, Time to Live, Protocol | Flags, Fragment Offset, Header Checksum
-
-
-    print ("Source IP address %s" % socket.inet_ntoa(ip_hdr[1])) # network to ascii convertion
-    print ("Destination IP address %s" % socket.inet_ntoa(ip_hdr[2])) # network to ascii convertion
-
-    # unapck the TCP header (source and destination port numbers)
-    tcpHeader = packet[0][34:54]
-    tcp_hdr = struct.unpack("!HH16s", tcpHeader)
-
-    print ("Source Source Port: %s" % tcp_hdr[0])
-    print ("Source Destination Port: %s" % tcp_hdr[1])
 
 if is_admin():
     recvPacket()
