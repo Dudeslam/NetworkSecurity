@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # ### 2. Throttling TCP connections
 
 # For this part, you will need to have some familiarity with the TCP protocol to write low-level networking code using a library. 
@@ -15,75 +17,44 @@
 #  connections between the host machine and another device.
 # Collect experimental evidence of the malicious behavior through Wireshark,
 #  and screenshots of the time taken to transmit a file using a file transfer (FTP or SSH) to show that it is indeed slower or interrupted when under attack.
+PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 
-
+import socket 
 from socket import *
-import threading
-from struct import *
+import struct
+import sys
+import ctypes
+import scapy.all as scapy
 
-#create streaming socket
-try:
-    s = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)
-except:
-    print ('Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+#Run this script in CMD with admin
 
-
-
-def recv_pack():
-	packet = s.recvfrom(65565)
-	
-	#packet string from tuple
-	packet = packet[0]
-	
-	#take first 20 characters for the ip header
-	ip_header = packet[0:20]
-	
-	#now unpack them :)
-	iph = unpack('!BBHHHBBH4s4s' , ip_header)
-	
-	version_ihl = iph[0]
-	version = version_ihl >> 4
-	ihl = version_ihl & 0xF
-	
-	iph_length = ihl * 4
-	
-	ttl = iph[5]
-	protocol = iph[6]
-	s_addr = socket.inet_ntoa(iph[8])
-	d_addr = socket.inet_ntoa(iph[9])
-	
-	print ('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + 
-    'Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))
-	
-	tcp_header = packet[iph_length:iph_length+20]
-	
-	#now unpack them :)
-	tcph = unpack('!HHLLBBHHH' , tcp_header)
-	
-	source_port = tcph[0]
-	dest_port = tcph[1]
-	sequence = tcph[2]
-	acknowledgement = tcph[3]
-	doff_reserved = tcph[4]
-	tcph_length = doff_reserved >> 4
-	
-	print ('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + 
-    ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))
-	
-	h_size = iph_length + tcph_length * 4
-	data_size = len(packet) - h_size
-	
-	#get data from the packet
-	data = packet[h_size:]
-	
-	print ('Data : ' + data)
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
 
 
 
-def main():
+def recvPacket():
+    print("Hello Packet")
+    s = socket(AF_INET, SOCK_RAW, htons(0x0800))
+    hostname = gethostname()
+    host = gethostbyname(hostname)
+    print('IP: {}'.format(host))
+    # addr = getaddrinfo('localhost', 8080)
+    # print(addr)
+
+    
+    # s.bind(("eth0", htons(0x0800)))
+    
+
     while True:
-        recv_pack()
+        packet = s.recvfrom(2048)
 
+if is_admin():
+    recvPacket()
+else:
+    recvPacket()
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
 
-if __name__ == "__main__":
-    main()

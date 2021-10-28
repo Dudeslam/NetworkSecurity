@@ -1,6 +1,7 @@
 import socket
 import re
 import time
+import sys
 
 # HOST = '192.168.0.7'  # The server's hostname or IP address
 # HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
@@ -26,6 +27,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     except:
         s.close()
         print("could not send data, now closing connection")
+        sys.exit()
 
 
     data = s.recv(1024)
