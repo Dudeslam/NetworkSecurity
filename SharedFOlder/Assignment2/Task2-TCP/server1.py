@@ -1,6 +1,7 @@
 import socket
 import re
 import time
+import sys
 
 # HOST = '192.168.0.7' # IPV4 address (Desktop)
 HOST = '192.168.0.26' # IPV4 Address (Laptop)
@@ -19,7 +20,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
             if not data:
                 print("No data Received")
-                break
+                sys.exit()
             else:
                 print("Received:", data)
                 recvVal = data.decode("UTF-8")

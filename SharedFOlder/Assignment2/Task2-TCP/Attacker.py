@@ -19,27 +19,106 @@
 #  and screenshots of the time taken to transmit a file using a file transfer (FTP or SSH) to show that it is indeed slower or interrupted when under attack.
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 
+from ctypes import sizeof
 import socket 
 from socket import *
 from struct import *
 import sys
-import ctypes
-import binascii
-import textwrap
+from typing import Counter
 from scapy import sessions
 import scapy.all as scapy
+from scapy.all import conf
+from scapy.layers.inet import IP, TCP
+import time
+import re
 
 #Run this script in CMD with admin
 
-def sniff():
-    retval = scapy.sniff(filter="tcp", sessions=sessions.IPSession)
-    return retval
+def contains_192(s):
+    if ("192." in s):
+        return s
 
+def cleanlist(listof):
+    retList = []
+ 
+    for x in listof:
+        rSuffix = x.replace(':', ' ').replace('>', ' ').split()
+        for y in rSuffix:
+            if("192." in y):
+                if (y in retList):
+                    pass
+                else:
+                    retList.append(y)
+        
 
+        
+        # rSuffix.remove("https")
+        # retList.append(filter(contains_192, rSuffix))
+    return retList
+
+             
+
+        
+        
+
+def GetList(filter):
+    packet = scapy.sniff(filter=filter,
+      session=sessions.IPSession,  # defragment on-the-flow
+    #   prn=lambda x: x.summary(),
+      count=100)
+    ListOfIP = []
+    retList = []
+
+    for x in range(0,100):
+        if ("192." in packet[x][1].getlayer(IP).summary()):
+            AddThis = str(packet[x][1].getlayer(IP).summary())
+            ListOfIP.append(AddThis)
+    retList = cleanlist(ListOfIP)
+            
+    return retList
+
+def _input(message, input_type=int):
+    while True:
+        try:
+                return input_type (input(message))
+        except:pass
 
 def main():
-    print("start program")
-    print(sniff())
+    i = 0
+    j = 0
+    print("Getting List\n")
+    IPList = GetList("tcp")
+    IPList2 = IPList
+    src = 0
+    dst = 0
+    n = len(IPList)
+    while not input("Enter to Continue \n"):
+        print("IP adresses:")
+        for x in IPList:
+            i += 1
+            print("[{}] ".format(i) + x)
+
+        val = _input("Choose Source\n")
+        print(val)
+        if val <= n & val > 0:
+            src = IPList[_input(val)-1]
+            print(IPList.pop(val))
+
+        for x in IPList:
+            j += 1
+            print("[{}] ".format(i) + x)
+
+        val = _input("Choose Destination")
+        if val <= n-1 & val > 0:
+            dst = IPList[_input(val)-1]
+        break
+
+    print("This is src {}".format(src))
+    print("This is dst {}".format(dst))
+
+    print("end")
+
+
 
 if __name__ == "__main__":
     main()
