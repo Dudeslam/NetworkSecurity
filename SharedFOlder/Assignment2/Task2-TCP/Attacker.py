@@ -10,6 +10,7 @@ from scapy import sessions
 import scapy.all as scapy
 from scapy.layers.inet import IP, TCP
 import time
+import re
 
 
 def contains_192(s):
@@ -28,25 +29,46 @@ def cleanlist(listof, filter):
     for x in listof:
         rSuffix = x.replace(':', ' ').replace('>', ' ').split()
         for y in rSuffix:
-            if(filter in y):
-                if (y in retList):
-                    pass
-                else:
-                    retList.append(y)
+            if(filter == ''):
+                if ('.' in y):
+                    if (y in retList):
+                        pass
+                    else:
+                        retList.append(y)  
+            else:
+                if(filter in y):
+                    if (y in retList):
+                        pass
+                    else:
+                        retList.append(y)
     return retList
 
-def GetList(filter, SearchFilter):
-    packet = scapy.sniff(filter=filter,
-      session=sessions.IPSession,  # defragment on-the-flow
-    #   prn=lambda x: x.summary(),
-      count=100)
+def GetList(filter):
+
+    if(filter == ''):
+        packet = scapy.sniff(session=sessions.IPSession, prn=lambda x: x.summary(), count=50)
+    else:
+        packet = scapy.sniff(filter=filter,
+        session=sessions.IPSession, prn=lambda x: x.summary(),
+        count=100)
+
+    return packet
+
+def SearchIP(SearchFilter, packet):
     ListOfIP = []
     retList = []
 
-    for x in range(0,100):
-        if (SearchFilter in packet[x][1].getlayer(IP).summary()):
-            AddThis = str(packet[x][1].getlayer(IP).summary())
-            ListOfIP.append(AddThis)
+    if(SearchFilter == ''):
+        for x in range(0,50):
+            if('.' in packet[x][1].getlayer(IP).summary()):
+                AddThis = str(packet[x][1].getlayer(IP).summary())
+                ListOfIP.append(AddThis)
+    else:
+        for x in range(0,100):
+            if (SearchFilter in packet[x][1].getlayer(IP).summary()):
+                AddThis = str(packet[x][1].getlayer(IP).summary())
+                ListOfIP.append(AddThis)
+    
     retList = cleanlist(ListOfIP, SearchFilter)
         
     return retList
@@ -99,7 +121,7 @@ def ChooseIP(IPList):
                             print("[{}] ".format(j) + y)
                         pass
                 else:
-                    print("IPList is empty, will now exit")
+                    print("There is no destination to choose\nWill now exit")
                     sys.exit()
         except KeyboardInterrupt:
             print("\n Exitting Program !!!!")
@@ -212,7 +234,11 @@ def main():
 
     print("Getting List\n")
     # Sniffing part
-    IPList = GetList("tcp", "192.")
+    # parameters: Filter for type of connection, Filter for expected address
+    ProtocolFilter = input("If you wish to filter protocols, type what should be searched for\n")
+    SniffList = GetList(ProtocolFilter)
+    AddressFilter = input("If you wish to filter Addresses, type what should be searched for\n")
+    IPList = SearchIP(AddressFilter, SniffList)
     src, dst = ChooseIP(IPList)
 
     # Adding Timestamp for attack start
