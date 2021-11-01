@@ -125,6 +125,18 @@ def get_mac(ip):
     # Return host mac address
     return answered_list[0][1].hwsrc
 
+def restore(target_ip, host_ip, verbose=True):
+    # get the real MAC address of target
+    target_mac = get_mac(target_ip)
+    # get the real MAC address of spoofed (gateway, i.e router)
+    host_mac = get_mac(host_ip)
+    # crafting the restoring packet
+    arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, hwsrc=host_mac)
+    # Send Restore message
+    scapy.send(arp_response, verbose=0, count=7)
+    if verbose:
+        print("[+] Sent to {} : {} is-at {}".format(target_ip, host_ip, host_mac)) 
+
 def spoof_delay(target_ip, host_ip, verbose=True):
     # get the mac address of the target
     target_mac = get_mac(target_ip)
@@ -144,18 +156,6 @@ def spoof_delay(target_ip, host_ip, verbose=True):
         # get the MAC address of the default interface we are using
         self_mac = scapy.ARP().hwsrc
         print("[+] Sent to {} : {} is-at {}".format(target_ip, host_ip, self_mac))
-
-def restore(target_ip, host_ip, verbose=True):
-    # get the real MAC address of target
-    target_mac = get_mac(target_ip)
-    # get the real MAC address of spoofed (gateway, i.e router)
-    host_mac = get_mac(host_ip)
-    # crafting the restoring packet
-    arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, hwsrc=host_mac)
-    # Send Restore message
-    scapy.send(arp_response, verbose=0, count=7)
-    if verbose:
-        print("[+] Sent to {} : {} is-at {}".format(target_ip, host_ip, host_mac)) 
 
 def spoof_Cancel(host_ip):
     win=512
