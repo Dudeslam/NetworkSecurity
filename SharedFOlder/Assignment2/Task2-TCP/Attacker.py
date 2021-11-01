@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from ctypes import sizeof
+from datetime import datetime
 from socket import *
 from struct import *
 import sys
@@ -161,7 +162,7 @@ def spoof_Cancel(host_ip):
     tcp_rst_count = 10
 
     #Sniffing for packet specific to ip
-    t = scapy.sniff(count=5,
+    t = scapy.sniff(count=20,
           lfilter=lambda x: x.haslayer(TCP)
           and x[IP].src == host_ip)
 
@@ -218,7 +219,7 @@ def main():
 
     IPList = GetList("tcp")
     src, dst = ChooseIP(IPList)
-    
+    print("Current Time: ", datetime.now())
     try:
         choice = _input("Press 1 for Throttle Attack\nPress 2 for Reset Attack\n")
         if (choice == 1):
