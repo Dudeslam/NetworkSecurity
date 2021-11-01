@@ -2,6 +2,7 @@ import socket
 import re
 import time
 import sys
+from datetime import datetime
 
 # HOST = '192.168.0.7'  # The server's hostname or IP address
 # HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
@@ -42,6 +43,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             incrementVal = int(incVal[0]) + 1
             msg = "Increment this : " + str(incrementVal)
             print("Sending next message")
+            print("Current Time on Client: {}".format(datetime.now()))
             time.sleep(2)
             try:
                 s.sendall(msg.encode())

